@@ -89,7 +89,7 @@ Example DPS meter plot showing damage:
 
 ![screenshot-3]
 
-If ocr_view enabled u can debug it viewing next window. Keep in mind that it works on target update:
+If ocr_view enabled u can debug it viewing next window. Keep in mind that it works ugly now and window will be movable only on incoming combat log updates.
 
 ![screenshot-4]
 
