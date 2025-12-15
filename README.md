@@ -65,6 +65,13 @@ App requires to open combat log as full height view. Chat bubble -> Combat.
 
 App was tested with UI Proportion set to Larger.
 
+<!-- Notes -->
+## Notes
+
+I created app for myself and clean up it a bit before release to github.
+
+I tested it with 2 monitors with requirements mentioned upper. Feel free to fork or write issues. Code can have bugs or bad patterns
+
 <!-- Screenshots -->
 ## Screenshots
 
