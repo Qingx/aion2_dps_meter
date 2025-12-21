@@ -31,8 +31,19 @@ extract_color_ranges = [
 
 class DPSMeter:
     def __init__(self, config):
-        tesseract_cmd = config.get('ocr', 'tesseract_cmd')
-        tesseract_config = config.get('ocr', 'tesseract_config')
+        ocr_engine = config.get('ocr', 'engine', fallback='paddle')
+        ocr_lang = config.get('ocr', 'lang', fallback='chinese_cht')
+        ocr_version = config.get('ocr', 'ocr_version', fallback='')
+        det_model_dir = config.get('ocr', 'det_model_dir', fallback='')
+        rec_model_dir = config.get('ocr', 'rec_model_dir', fallback='')
+        cls_model_dir = config.get('ocr', 'cls_model_dir', fallback='')
+        use_gpu_value = config.get('ocr', 'use_gpu', fallback='auto').lower()
+        if use_gpu_value in ('1', 'true', 'yes'):
+            use_gpu = True
+        elif use_gpu_value in ('0', 'false', 'no'):
+            use_gpu = False
+        else:
+            use_gpu = None
         ocr_thread_count = int(config.get('ocr', 'thread_count'))
 
         capture_fps = int(config.get('capture', 'fps'))
@@ -60,8 +71,13 @@ class DPSMeter:
                                               width=capture_region_width,
                                               height=capture_region_height)
 
-        self.ocr = CombatLogOCR(tesseract_cmd=tesseract_cmd,
-                                tesseract_config=tesseract_config,
+        self.ocr = CombatLogOCR(ocr_engine=ocr_engine,
+                                ocr_lang=ocr_lang,
+                                ocr_version=ocr_version or None,
+                                det_model_dir=det_model_dir or None,
+                                rec_model_dir=rec_model_dir or None,
+                                cls_model_dir=cls_model_dir or None,
+                                use_gpu=use_gpu,
                                 extract_color_ranges=extract_color_ranges,
                                 resize_factor=2,
                                 resize_interpolation=cv2.INTER_NEAREST_EXACT)

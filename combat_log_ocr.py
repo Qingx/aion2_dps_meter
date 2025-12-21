@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
-import pytesseract
+import paddle
+from paddleocr import PaddleOCR
 
 
 class RecognizedResult:
@@ -13,23 +14,39 @@ class RecognizedResult:
 
 
 class CombatLogOCR:
-    def __init__(self, tesseract_cmd, tesseract_config, extract_color_ranges, resize_factor=2, resize_interpolation=cv2.INTER_NEAREST_EXACT):
+    def __init__(
+        self,
+        ocr_engine,
+        ocr_lang,
+        ocr_version,
+        det_model_dir,
+        rec_model_dir,
+        cls_model_dir,
+        use_gpu,
+        extract_color_ranges,
+        resize_factor=2,
+        resize_interpolation=cv2.INTER_NEAREST_EXACT,
+    ):
         self.color_ranges = extract_color_ranges
-        self.tesseract_cmd = tesseract_cmd
-        self.tesseract_config = tesseract_config
+        self.ocr_engine = ocr_engine
+        self.ocr_lang = ocr_lang
+        self.ocr_version = ocr_version
+        self.det_model_dir = det_model_dir
+        self.rec_model_dir = rec_model_dir
+        self.cls_model_dir = cls_model_dir
+        self.use_gpu = self._detect_gpu() if use_gpu is None else use_gpu
         self.resize_factor = resize_factor
         self.resize_interpolation = resize_interpolation
 
-        pytesseract.pytesseract.tesseract_cmd = self.tesseract_cmd
+        if self.ocr_engine != "paddle":
+            raise ValueError(f"Unsupported OCR engine: {self.ocr_engine}")
+
+        self.ocr = self._init_paddle_ocr()
 
 
     def handle(self, image, timestamp, seq_id):
         processed = self._preprocess_image(image)
-        try:
-            text = pytesseract.image_to_string(processed, config=self.tesseract_config)
-        except pytesseract.TesseractError as e:
-            print(f"OCR Error: {e}")
-            text = ""
+        text = self._paddle_to_text(processed)
         return RecognizedResult(image, processed, text, timestamp, seq_id)
 
 
@@ -47,3 +64,38 @@ class CombatLogOCR:
         result = cv2.bitwise_and(image, image, mask=combined_mask)
         return result
 
+
+    def _detect_gpu(self):
+        return paddle.device.is_compiled_with_cuda() and paddle.device.cuda.device_count() > 0
+
+
+    def _init_paddle_ocr(self):
+        options = {
+            "lang": self.ocr_lang,
+            "use_angle_cls": True,
+            "show_log": False,
+            "use_gpu": self.use_gpu,
+        }
+        if self.ocr_version:
+            options["ocr_version"] = self.ocr_version
+        if self.det_model_dir:
+            options["det_model_dir"] = self.det_model_dir
+        if self.rec_model_dir:
+            options["rec_model_dir"] = self.rec_model_dir
+        if self.cls_model_dir:
+            options["cls_model_dir"] = self.cls_model_dir
+        return PaddleOCR(**options)
+
+
+    def _paddle_to_text(self, image):
+        try:
+            result = self.ocr.ocr(image, cls=True)
+        except Exception as exc:
+            print(f"OCR Error: {exc}")
+            return ""
+        lines = []
+        for block in result or []:
+            for line in block or []:
+                if len(line) > 1 and line[1]:
+                    lines.append(line[1][0])
+        return "\n".join(lines)
